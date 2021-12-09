@@ -10,6 +10,9 @@ from kivy.factory import Factory
 from kivy.app import App
 from kivy.config import Config
 import random
+import scipy
+import scipy.ndimage
+import numpy as np
 import sys
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 kivy.require('2.0.0')
@@ -47,6 +50,9 @@ class MSTile(Image, ToggleButtonBehavior):
                 else:
                     self.source = "images/flag.png"
                     self.is_flagged = True
+            if self.last_touch_button == 'left':
+                if not self.is_bomb:
+                    self.source = f"images/number-{self.adjacent_bombs}.png"
         return super(MSTile, self).on_touch_down(touch)
 
 
@@ -64,6 +70,25 @@ class MSGrid(GridLayout):
             bomb_tiles.add((rand_row, rand_col))
         return bomb_tiles
 
+    def get_adjacent_tiles(self, i, j):
+        indices = [i, j]
+        matrix = np.array(self.grid)
+        indices = tuple(np.transpose(np.atleast_2d(indices)))
+        arr_shape = np.shape(matrix)
+        dist = np.ones(arr_shape)
+        dist[indices] = 0
+        dist = scipy.ndimage.distance_transform_cdt(dist, metric='chessboard')
+        nb_indices = np.transpose(np.nonzero(dist == 1))
+        return [matrix[tuple(ind)] for ind in nb_indices]
+
+    def calculate_adjacent_bombs(self):
+        for x in range(self.rows):
+            for y in range(self.cols):
+                adjacent_tiles = self.get_adjacent_tiles(x, y)
+                for tile in adjacent_tiles:
+                    if tile.is_bomb:
+                        self.grid[x][y].adjacent_bombs += 1
+
     def create_layout(self, bomb_positions):
         self.grid = [[None for _ in range(self.cols)]
                      for _ in range(self.rows)]
@@ -74,8 +99,11 @@ class MSGrid(GridLayout):
                 tile.col_number = j
                 if ((i, j) in bomb_positions):
                     tile.is_bomb = True
+                    tile.source = "images/bomb.png"
                 self.grid[i][j] = tile
                 self.add_widget(tile)
+
+        self.calculate_adjacent_bombs()
 
 
 class MSGame(Widget):
