@@ -7,6 +7,8 @@ from kivy.uix.button import Button
 from kivy.uix.togglebutton import ToggleButton, ToggleButtonBehavior
 from kivy.uix.image import Image
 from kivy.factory import Factory
+from kivy.uix.popup import Popup
+from kivy.core.window import Window
 from kivy.app import App
 from kivy.config import Config
 import random
@@ -22,6 +24,11 @@ NUM_ROWS = {"easy": 9, "medium": 16, "hard": 30}
 NUM_COLS = {"easy": 9, "medium": 16, "hard": 16}
 
 
+class GameOverPopup(Popup):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class MSTile(Image, ToggleButtonBehavior):
     row_number = 0
     col_number = 0
@@ -35,10 +42,6 @@ class MSTile(Image, ToggleButtonBehavior):
         super().__init__(**kwargs)
         self.allow_stretch = True
         self.keep_ratio = False
-    #     self.bind(on_press=self.onPress)
-
-    # def onPress(self):
-    #     print(self.last_touch_button)
 
     def on_touch_down(self, touch):
         if self.collide_point(*touch.pos):
@@ -53,6 +56,17 @@ class MSTile(Image, ToggleButtonBehavior):
             if self.last_touch_button == 'left':
                 if not self.is_bomb:
                     self.source = f"images/number-{self.adjacent_bombs}.png"
+                else:
+                    self.source = "images/bomb.png"
+                    exit_button = Button(
+                        text="Quit", size=(50, 50))
+                    game_over_popup = GameOverPopup(title="Game Over!",
+                                                    content=exit_button,
+                                                    auto_dismiss=False,
+                                                    size=(350, 350),
+                                                    size_hint=(None, None))
+                    exit_button.bind(on_press=App.get_running_app().stop)
+                    game_over_popup.open()
         return super(MSTile, self).on_touch_down(touch)
 
 
@@ -99,7 +113,8 @@ class MSGrid(GridLayout):
                 tile.col_number = j
                 if ((i, j) in bomb_positions):
                     tile.is_bomb = True
-                    tile.source = "images/bomb.png"
+                    # uncomment next line to see bomb placements
+                    # tile.source = "images/bomb.png"
                 self.grid[i][j] = tile
                 self.add_widget(tile)
 
