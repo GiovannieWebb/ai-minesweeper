@@ -10,6 +10,8 @@ from kivy.factory import Factory
 from kivy.uix.popup import Popup
 from kivy.core.window import Window
 from kivy.app import App
+from kivy.clock import Clock
+from functools import partial
 from kivy.config import Config
 import time
 import random
@@ -27,9 +29,8 @@ SAFE_TILES_COVERED = sys.maxsize
 START_TIME = 0
 
 
-class GameOverPopup(Popup):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+def my_callback(a, b, *largs):
+    print(a + " " + b)
 
 
 class MSTile(Image, ToggleButtonBehavior):
@@ -185,8 +186,49 @@ class MSGame(Widget):
             bomb_tiles.add((rand_row, rand_col))
         return bomb_tiles
 
+    def min_adj_bombs(self):
+        min_adj_bombs = 8
+        for i in range(self.grid.rows):
+            for j in range(self.grid.cols):
+                t = self.grid.grid[i][j]
+                if t.adjacent_bombs < min_adj_bombs:
+                    min_adj_bombs = t.adjacent_bombs
+        return min_adj_bombs
+
+    def uncover_first_non_bomb_tile(self):
+        mab = self.min_adj_bombs()
+        for i in range(self.grid.rows):
+            for j in range(self.grid.cols):
+                t = self.grid.grid[i][j]
+                if not t.is_bomb and t.adjacent_bombs == mab:
+                    t.source = f"images/number-{mab}.png"
+                    t.is_uncovered = True
+                    return
+
     def initialize_grid(self):
         self.grid.create_layout(bomb_positions=self.bomb_positions())
+
+
+class GameOverPopup(Popup):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class MSCSP():
+    def __init__(self, **kwargs):
+        self.grid = kwargs.get("grid")
+
+    def flag_tile(self, t, *largs):
+        t.source = "images/flag.png"
+
+    def flag_all_tiles(self):
+        iteration = 1
+        for i in range(self.grid.rows):
+            for j in range(self.grid.cols):
+                tile = self.grid.grid[i][j]
+                Clock.schedule_interval(  # or schedule_once ?
+                    partial(self.flag_tile, tile), iteration)
+                iteration += 1
 
 
 class MinesweeperApp(App):
@@ -198,6 +240,9 @@ class MinesweeperApp(App):
         game = MSGame()
         game.set_variables(difficulty=difficulty)
         game.initialize_grid()
+        game.uncover_first_non_bomb_tile()
+        # csp = MSCSP(grid=game.grid)
+        # csp.flag_all_tiles()
         return game.grid
 
 
