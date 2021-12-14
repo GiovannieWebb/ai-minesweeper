@@ -23,8 +23,8 @@ Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 kivy.require('2.0.0')
 
 NUM_BOMBS = {"easy": 10, "medium": 40, "hard": 99}
-NUM_ROWS = {"easy": 9, "medium": 16, "hard": 30}
-NUM_COLS = {"easy": 9, "medium": 16, "hard": 16}
+NUM_ROWS = {"easy": 9, "medium": 16, "hard": 16}
+NUM_COLS = {"easy": 9, "medium": 16, "hard": 30}
 SAFE_TILES_COVERED = sys.maxsize
 START_TIME = 0
 GAMEMODE = "AI"
@@ -200,7 +200,12 @@ class MSGrid(GridLayout):
 
     def get_coordinates(self):
         """return list of coordinates of the board minus the starting point"""
-        return [(x, y) for x in range(0, self.cols) for y in range(0, self.rows) if (x, y) != self.starting_point]
+        coords = []
+        for i in range(self.rows):
+            for j in range(self.cols):
+                if (i, j) != self.starting_point:
+                    coords.append((i, j))
+        return coords
 
 
 class MSGame(Widget):
@@ -329,7 +334,7 @@ class MSCSP():
                 exit_button.bind(on_press=App.get_running_app().stop)
                 game_over_popup.open()
 
-                return
+                break
             self.simplify_constraints()
         mines_left = self.grid.num_mines - self.num_mines_flagged
         if len(self.grid.moves) > 0 and mines_left > 0:
@@ -634,6 +639,8 @@ class MSCSP():
 
     def get_current_square(self, x, y):
         """return Square object at (x,y) in board"""
+        # print(f"Rows: {self.grid.rows}, Cols: {self.grid.cols}")
+        # print(f"x: {x}, y: {y}")
         return self.grid.grid[x][y]
 
 
@@ -642,7 +649,7 @@ class MinesweeperApp(App):
     def build(self):
         global START_TIME
         START_TIME = time.time()
-        difficulty = "easy"
+        difficulty = "medium"
         gamemode = GAMEMODE
         game = MSGame()
         game.set_variables(difficulty=difficulty, gamemode=gamemode)
@@ -652,7 +659,7 @@ class MinesweeperApp(App):
             csp = MSCSP(game=game, grid=game.grid)
             csp.start_game()
             csp.perform_actions()
-            csp.print_grid()
+            # csp.print_grid()
         return game.grid
 
 
