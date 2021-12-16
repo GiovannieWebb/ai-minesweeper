@@ -360,7 +360,7 @@ class MSGame(Widget):
         self.welcome_screen.create_buttons()
         for button in self.welcome_screen.buttons:
             if button.text == "PLAY":
-                button.bind(on_press=self.begin_game)
+                button.bind(on_release=self.begin_game)
         self.add_widget(self.welcome_screen)
 
     def begin_game(self, *args):
