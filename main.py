@@ -385,8 +385,10 @@ class MSGame(Widget):
     def restart(self, gamemode, difficulty, popup, *largs):
         global GAMEMODE
         global DIFFICULTY
+        global START_TIME
         GAMEMODE = gamemode
         DIFFICULTY = difficulty
+        START_TIME = time.time()
         if popup is not None:
             popup.dismiss()
         self.welcome_screen.clear_widgets()
