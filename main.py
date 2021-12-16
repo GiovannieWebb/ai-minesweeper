@@ -38,6 +38,10 @@ SAFE_TILES_COVERED = sys.maxsize
 
 
 def to_print_tiles(ts):
+    """
+    Returns a list of tiles, but as (x, y) coordinate pairs rather than MSTile
+    objects. Useful for printing tiles.
+    """
     to_print = []
     for t in ts:
         to_print.append((t.row_number, t.col_number))
@@ -64,6 +68,10 @@ def truncate_decimal(s, n):
 
 
 def get_adjacent_tiles(g, i, j):
+    """
+    Returns a list of all MSTile objects in that are adjacent to the tile at 
+    index (i, j) of MSGrid g.
+    """
     indices = [i, j]
     matrix = np.array(g)
     indices = tuple(np.transpose(np.atleast_2d(indices)))
@@ -277,7 +285,6 @@ class MSGrid(GridLayout):
         self.calculate_adjacent_bombs()
 
     def get_coordinates(self):
-        """return list of coordinates of the board minus the starting point"""
         coords = []
         for i in range(self.rows):
             for j in range(self.cols):
