@@ -14,10 +14,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.togglebutton import ToggleButton, ToggleButtonBehavior
 from kivy.uix.widget import Widget
 
-import numpy as np
 import random
-import scipy
-import scipy.ndimage
 import sys
 import time
 
