@@ -15,7 +15,6 @@ from kivy.uix.togglebutton import ToggleButton, ToggleButtonBehavior
 from kivy.uix.widget import Widget
 
 import random
-import sys
 import time
 
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
@@ -31,7 +30,7 @@ START_TIME = None
 GAMEMODE = None
 DIFFICULTY = None
 
-SAFE_TILES_COVERED = sys.maxsize
+SAFE_TILES_COVERED = None
 
 
 def to_print_tiles(ts):
