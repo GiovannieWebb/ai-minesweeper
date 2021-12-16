@@ -371,7 +371,8 @@ class MSGame(Widget):
                 self.welcome_screen.remove_widget(button)
                 self.remove_widget(button)
             self.remove_widget(self.welcome_screen)
-            self.set_bomb_positions()
+            if len(self.bomb_positions) == 0:
+                self.set_bomb_positions()
             self.grid.create_layout(bomb_positions=self.bomb_positions)
             self.add_widget(self.grid)
             self.uncover_first_non_bomb_tile()
