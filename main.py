@@ -72,15 +72,17 @@ def get_adjacent_tiles(g, i, j):
     Returns a list of all MSTile objects in that are adjacent to the tile at 
     index (i, j) of MSGrid g.
     """
-    indices = [i, j]
-    matrix = np.array(g)
-    indices = tuple(np.transpose(np.atleast_2d(indices)))
-    arr_shape = np.shape(matrix)
-    dist = np.ones(arr_shape)
-    dist[indices] = 0
-    dist = scipy.ndimage.distance_transform_cdt(dist, metric='chessboard')
-    nb_indices = np.transpose(np.nonzero(dist == 1))
-    return [matrix[tuple(ind)] for ind in nb_indices]
+    neighbors = []
+    possible_neighbors = [(i-1, j), (i-1, j+1), (i, j-1),
+                          (i+1, j-1), (i+1, j), (i+1, j+1), (i, j+1), (i-1, j-1)]
+    for n in possible_neighbors:
+        if 0 <= n[0] <= g.rows-1 and 0 <= n[1] <= g.cols-1:
+            neighbors.append(n)
+    ms_tiles = []
+    for neighbor in neighbors:
+        x, y = neighbor
+        ms_tiles.append(g.grid[x][y])
+    return ms_tiles
 
 
 class WelcomeScreen(Label):
@@ -249,7 +251,7 @@ class MSGrid(GridLayout):
     def calculate_adjacent_bombs(self):
         for x in range(self.rows):
             for y in range(self.cols):
-                adjacent_tiles = get_adjacent_tiles(self.grid, x, y)
+                adjacent_tiles = get_adjacent_tiles(self, x, y)
                 self.grid[x][y].adjacent_tiles = adjacent_tiles
                 cs = [(at.row_number, at.col_number) for at in adjacent_tiles]
                 self.grid[x][y].constraints = cs
@@ -520,7 +522,7 @@ class MSCSP():
         else:
             self.mark_square_as_safe(square)
             if current.original_constant == 0:
-                neighbors = get_adjacent_tiles(self.grid.grid, x, y)
+                neighbors = get_adjacent_tiles(self.grid, x, y)
                 for neighbor in neighbors:
                     n = (neighbor.row_number, neighbor.col_number)
                     if n not in self.probed_squares:
@@ -598,7 +600,7 @@ class MSCSP():
         x, y = variable
         square = self.get_current_square(x, y)
         square.val = val
-        neighbors = get_adjacent_tiles(self.grid.grid, x, y)
+        neighbors = get_adjacent_tiles(self.grid, x, y)
         for n in neighbors:
             nx = n.row_number
             ny = n.col_number
@@ -614,7 +616,7 @@ class MSCSP():
 
     def get_neighbor_count(self, variable):
         nx, ny = variable
-        nbors = get_adjacent_tiles(self.grid.grid, nx, ny)
+        nbors = get_adjacent_tiles(self.grid, nx, ny)
         mine_count = 0
         unknown_count = 0
         safe_count = 0
@@ -740,7 +742,7 @@ class MSCSP():
                 current_square.is_flagged = True
             else:
                 current_square.val = 0
-            neighbors = get_adjacent_tiles(self.grid.grid, x, y)
+            neighbors = get_adjacent_tiles(self.grid, x, y)
             for neighbor in neighbors:
                 nx = neighbor.row_number
                 ny = neighbor.col_number
