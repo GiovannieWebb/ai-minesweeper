@@ -12,6 +12,7 @@ from kivy.core.window import Window
 from kivy.app import App
 from kivy.clock import Clock
 from functools import partial
+from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.config import Config
 import time
 import random
@@ -25,9 +26,12 @@ kivy.require('2.0.0')
 NUM_BOMBS = {"easy": 10, "medium": 40, "hard": 99}
 NUM_ROWS = {"easy": 9, "medium": 16, "hard": 16}
 NUM_COLS = {"easy": 9, "medium": 16, "hard": 30}
+
+START_TIME = None
+GAMEMODE = None
+DIFFICULTY = None
+
 SAFE_TILES_COVERED = sys.maxsize
-START_TIME = 0
-GAMEMODE = "AI"
 
 
 def to_print_tiles(ts):
@@ -96,7 +100,10 @@ class MSTile(Image, ToggleButtonBehavior):
         self.keep_ratio = False
 
     def on_touch_down(self, touch):
+        global GAMEMODE
         global SAFE_TILES_COVERED
+        if GAMEMODE != "player":
+            return
         if self.collide_point(*touch.pos):
             self.last_touch_button = touch.button
             if self.last_touch_button == 'right':
@@ -178,7 +185,6 @@ class MSGrid(GridLayout):
         SAFE_TILES_COVERED = (self.rows * self.cols) - len(bomb_positions)
 
         self.board_coordinates = self.get_coordinates()
-
         self.grid = [[None for _ in range(self.cols)]
                      for _ in range(self.rows)]
         for i in range(self.rows):
@@ -208,27 +214,109 @@ class MSGrid(GridLayout):
         return coords
 
 
-class MSGame(Widget):
-    difficulty = "easy"
-    grid = MSGrid()
-    gamemode = GAMEMODE
+class WelcomeScreen(Label):
+    buttons = []
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.size = Window.size
 
-    def set_variables(self, difficulty, gamemode):
-        self.difficulty = difficulty
-        self.gamemode = gamemode
-        self.grid.rows = NUM_ROWS[self.difficulty]
-        self.grid.cols = NUM_COLS[self.difficulty]
-        self.grid.num_mines = NUM_BOMBS[self.difficulty]
+    def set_difficulty(self, diff, *args):
+        global DIFFICULTY
+        DIFFICULTY = diff
+
+    def set_gamemode(self, mode, *args):
+        global GAMEMODE
+        GAMEMODE = mode
+
+    def create_buttons(self):
+        easy = ToggleButton(text="Easy",
+                            size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
+                            pos=(0.1 * Window.size[0], 0.3 * Window.size[1]),
+                            group="difficulties",
+                            on_press=lambda *args: self.set_difficulty("easy", *args))
+        self.add_widget(easy)
+        self.buttons.append(easy)
+        medium = ToggleButton(text="Medium",
+                              size=(0.2 * Window.size[0],
+                                    0.1 * Window.size[1]),
+                              pos=(0.4 * Window.size[0], 0.3 * Window.size[1]),
+                              group="difficulties",
+                              on_press=lambda *args: self.set_difficulty("medium", *args))
+        self.add_widget(medium)
+        self.buttons.append(medium)
+        hard = ToggleButton(text="Hard",
+                            size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
+                            pos=(0.7 * Window.size[0], 0.3 * Window.size[1]),
+                            group="difficulties",
+                            on_press=lambda *args: self.set_difficulty("hard", *args))
+        self.add_widget(hard)
+        self.buttons.append(hard)
+
+        player = ToggleButton(text="Player",
+                              size=(0.2 * Window.size[0],
+                                    0.1 * Window.size[1]),
+                              pos=(0.25 * Window.size[0],
+                                   0.1 * Window.size[1]),
+                              group="modes",
+                              on_press=lambda *args: self.set_gamemode("player", *args))
+        self.add_widget(player)
+        self.buttons.append(player)
+        ai = ToggleButton(text="Computer",
+                          size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
+                          pos=(0.55 * Window.size[0], 0.1 * Window.size[1]),
+                          group="modes",
+                          on_press=lambda *args: self.set_gamemode("computer", *args))
+        self.add_widget(ai)
+        self.buttons.append(ai)
+
+        play = Button(text="PLAY",
+                      size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
+                      pos=(0.4 * Window.size[0], 0.6 * Window.size[1]))
+        self.add_widget(play)
+        self.buttons.append(play)
+
+
+class MSGame(Widget):
+    grid = MSGrid(size=Window.size)
+    welcome_screen = WelcomeScreen(
+        text="MINESWEEPER\nSelect difficulty, gamemode, and press play!",
+        halign='center',
+        valign='center')
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.bind(size=self.resize_grid)
+
+    def resize_grid(self, *args):
+        self.grid.size = Window.size
+        self.welcome_screen.size = Window.size
+        for button in self.welcome_screen.children:
+            button.size = (0.2 * Window.size[0], 0.1 * Window.size[1])
+            if button.text == "Easy":
+                button.pos = (0.1 * Window.size[0], 0.3 * Window.size[1])
+            if button.text == "Medium":
+                button.pos = (0.4 * Window.size[0], 0.3 * Window.size[1])
+            if button.text == "Hard":
+                button.pos = (0.7 * Window.size[0], 0.3 * Window.size[1])
+            if button.text == "Player":
+                button.pos = (0.25 * Window.size[0], 0.1 * Window.size[1])
+            if button.text == "Computer":
+                button.pos = (0.55 * Window.size[0], 0.1 * Window.size[1])
+            if button.text == "PLAY":
+                button.pos = (0.4 * Window.size[0], 0.6 * Window.size[1])
+
+    def set_variables(self):
+        self.grid.rows = NUM_ROWS[DIFFICULTY]
+        self.grid.cols = NUM_COLS[DIFFICULTY]
+        self.grid.num_mines = NUM_BOMBS[DIFFICULTY]
 
     def bomb_positions(self):
         bomb_tiles = set()
-        num_bombs = NUM_BOMBS[self.difficulty]
+        num_bombs = NUM_BOMBS[DIFFICULTY]
         while len(bomb_tiles) < num_bombs:
-            rand_row = random.randint(0, NUM_ROWS[self.difficulty]-1)
-            rand_col = random.randint(0, NUM_COLS[self.difficulty]-1)
+            rand_row = random.randint(0, NUM_ROWS[DIFFICULTY]-1)
+            rand_col = random.randint(0, NUM_COLS[DIFFICULTY]-1)
             bomb_tiles.add((rand_row, rand_col))
         return bomb_tiles
 
@@ -254,8 +342,27 @@ class MSGame(Widget):
                     self.grid.starting_point = (t.row_number, t.col_number)
                     return
 
-    def initialize_grid(self):
-        self.grid.create_layout(bomb_positions=self.bomb_positions())
+    def initialize_game(self):
+        self.welcome_screen.create_buttons()
+        for button in self.welcome_screen.buttons:
+            if button.text == "PLAY":
+                button.bind(on_press=self.begin_game)
+        self.add_widget(self.welcome_screen)
+
+    def begin_game(self, *args):
+        if DIFFICULTY is not None and GAMEMODE is not None:
+            self.set_variables()
+            for button in self.welcome_screen.buttons:
+                self.welcome_screen.remove_widget(button)
+                self.remove_widget(button)
+            self.remove_widget(self.welcome_screen)
+            self.grid.create_layout(bomb_positions=self.bomb_positions())
+            self.add_widget(self.grid)
+            self.uncover_first_non_bomb_tile()
+            if GAMEMODE == "computer":
+                csp = MSCSP(game=self, grid=self.grid)
+                csp.start_game()
+                csp.perform_actions()
 
 
 class MSCSP():
@@ -275,7 +382,42 @@ class MSCSP():
         self.actions = []
 
     def uncover_tile(self, t, *largs):
-        t.source = f"images/number-{t.adjacent_bombs}.png"
+        global SAFE_TILES_COVERED
+        if t.is_bomb:
+            t.source = "images/bomb.png"
+            exit_button = Button(text="Quit", size=(50, 50))
+            seconds_elapsed = time.time() - START_TIME
+            time_str = truncate_decimal(
+                str(seconds_elapsed/60.0), 2) + "min"
+            if seconds_elapsed < 60:
+                time_str = truncate_decimal(
+                    str(seconds_elapsed), 2) + "s"
+            game_over_popup = GameOverPopup(title=f"Game Lost!\nTime: {time_str}",
+                                            content=exit_button,
+                                            auto_dismiss=False,
+                                            size=(350, 350),
+                                            size_hint=(None, None))
+            exit_button.bind(on_press=App.get_running_app().stop)
+            game_over_popup.open()
+        else:
+            t.source = f"images/number-{t.adjacent_bombs}.png"
+            SAFE_TILES_COVERED -= 1
+            if SAFE_TILES_COVERED == 0:
+                t.source = f"images/number-{t.adjacent_bombs}.png"
+                exit_button = Button(text="Quit", size=(50, 50))
+                seconds_elapsed = time.time() - START_TIME
+                time_str = truncate_decimal(
+                    str(seconds_elapsed/60.0), 2) + "min"
+                if seconds_elapsed < 60:
+                    time_str = truncate_decimal(
+                        str(seconds_elapsed), 2) + "s"
+                game_over_popup = GameOverPopup(title=f"Game Won!\nTime: {time_str}",
+                                                content=exit_button,
+                                                auto_dismiss=False,
+                                                size=(350, 350),
+                                                size_hint=(None, None))
+                exit_button.bind(on_press=App.get_running_app().stop)
+                game_over_popup.open()
 
     def flag_tile(self, t, *largs):
         t.source = "images/flag.png"
@@ -288,6 +430,7 @@ class MSCSP():
         print(to_print)
 
     def perform_actions(self):
+        global SAFE_TILES_COVERED
         # self.print_actions()
         for i in range(len(self.actions)):
             action = self.actions[i]
@@ -296,8 +439,6 @@ class MSCSP():
                 Clock.schedule_once(
                     partial(self.uncover_tile, tile), (i*0.1))
             elif s == "flag":
-                # print("HERE")
-                # self.flag_tile(tile)
                 Clock.schedule_once(
                     partial(self.flag_tile, tile), (i*0.1))
 
@@ -306,7 +447,7 @@ class MSCSP():
             for j in range(self.grid.cols):
                 sq = self.get_current_square(i, j)
                 print(
-                    f"{(i, j)}, flagged = {sq.is_flagged}, uncovered = {sq.is_uncovered}")
+                    f"{(i, j)}, flagged = {sq.is_flagged}, uncovered = {sq.is_uncovered}, is bomb = {sq.is_bomb}")
 
     def start_game(self):
         while self.squares_to_probe:
@@ -316,25 +457,7 @@ class MSCSP():
             if uncovered == True:
                 # uncovered a mine
                 self.lost_game = True
-
-                self.get_current_square(
-                    square[0], square[1]).source = "images/bomb.png"
-                exit_button = Button(text="Quit", size=(50, 50))
-                seconds_elapsed = time.time() - START_TIME
-                time_str = truncate_decimal(
-                    str(seconds_elapsed/60.0), 2) + "min"
-                if seconds_elapsed < 60:
-                    time_str = truncate_decimal(
-                        str(seconds_elapsed), 2) + "s"
-                game_over_popup = GameOverPopup(title=f"Game Over!\nTime: {time_str}",
-                                                content=exit_button,
-                                                auto_dismiss=False,
-                                                size=(350, 350),
-                                                size_hint=(None, None))
-                exit_button.bind(on_press=App.get_running_app().stop)
-                game_over_popup.open()
-
-                break
+                return
             self.simplify_constraints()
         mines_left = self.grid.num_mines - self.num_mines_flagged
         if len(self.grid.moves) > 0 and mines_left > 0:
@@ -649,18 +772,9 @@ class MinesweeperApp(App):
     def build(self):
         global START_TIME
         START_TIME = time.time()
-        difficulty = "medium"
-        gamemode = GAMEMODE
         game = MSGame()
-        game.set_variables(difficulty=difficulty, gamemode=gamemode)
-        game.initialize_grid()
-        game.uncover_first_non_bomb_tile()
-        if game.gamemode == "AI":
-            csp = MSCSP(game=game, grid=game.grid)
-            csp.start_game()
-            csp.perform_actions()
-            # csp.print_grid()
-        return game.grid
+        game.initialize_game()
+        return game
 
 
 if __name__ == '__main__':
