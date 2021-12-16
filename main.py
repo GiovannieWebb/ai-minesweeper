@@ -416,7 +416,7 @@ class MSCSP():
         global SAFE_TILES_COVERED
         if t.is_bomb:
             t.source = "images/bomb.png"
-            exit_button = Button(text="Quit", size=(50, 50))
+            exit_button = Button(text="Replay as Player", size=(200, 200))
             seconds_elapsed = time.time() - START_TIME
             time_str = truncate_decimal(
                 str(seconds_elapsed/60.0), 2) + "min"
@@ -426,29 +426,37 @@ class MSCSP():
             game_over_popup = Popup(title=f"Game Lost!\nTime: {time_str}",
                                     content=exit_button,
                                     auto_dismiss=False,
-                                    size=(350, 350),
+                                    size=(500, 500),
                                     size_hint=(None, None))
-            exit_button.bind(on_press=App.get_running_app().stop)
+            exit_button.bind(
+                on_press=lambda *args: GAME.restart("player",
+                                                    DIFFICULTY,
+                                                    game_over_popup,
+                                                    *args))
             game_over_popup.open()
         else:
             t.source = f"images/number-{t.adjacent_bombs}.png"
             SAFE_TILES_COVERED -= 1
             if SAFE_TILES_COVERED == 0:
                 t.source = f"images/number-{t.adjacent_bombs}.png"
-                exit_button = Button(text="Quit", size=(50, 50))
+                exit_button = Button(text="Replay as Player", size=(200, 200))
                 seconds_elapsed = time.time() - START_TIME
                 time_str = truncate_decimal(
                     str(seconds_elapsed/60.0), 2) + "min"
                 if seconds_elapsed < 60:
                     time_str = truncate_decimal(
                         str(seconds_elapsed), 2) + "s"
-                game_over_popup = Popup(title=f"Game Won!\nTime: {time_str}",
-                                        content=exit_button,
-                                        auto_dismiss=False,
-                                        size=(350, 350),
-                                        size_hint=(None, None))
-                exit_button.bind(on_press=App.get_running_app().stop)
-                game_over_popup.open()
+                game_won_popup = Popup(title=f"Game Won!\nTime: {time_str}",
+                                       content=exit_button,
+                                       auto_dismiss=False,
+                                       size=(500, 500),
+                                       size_hint=(None, None))
+                exit_button.bind(
+                    on_press=lambda *args: GAME.restart("player",
+                                                        DIFFICULTY,
+                                                        game_won_popup,
+                                                        *args))
+                game_won_popup.open()
 
     def flag_tile(self, t, *largs):
         t.source = "images/flag.png"
