@@ -13,5 +13,12 @@
 3. Activate kivy virtual environment
     > `source kivy_venv/bin/activate`
 
+4. Once again, ensure that kivy (and numpy and scipy) are installed in this virtual environment
+    > `python3 -m pip3 install kivy[base] kivy_examples`
+
+    > `pip3 install numpy`
+
+    > `pip3 install scipy`
+
 4. Play Game!
     > `python3 main.py`

@@ -1,25 +1,26 @@
+from functools import partial
+
 import kivy
-from kivy.uix.widget import Widget
-from kivy.uix.textinput import TextInput
-from kivy.uix.gridlayout import GridLayout
-from kivy.uix.label import Label
-from kivy.uix.button import Button
-from kivy.uix.togglebutton import ToggleButton, ToggleButtonBehavior
-from kivy.uix.image import Image
-from kivy.factory import Factory
-from kivy.uix.popup import Popup
-from kivy.core.window import Window
 from kivy.app import App
 from kivy.clock import Clock
-from functools import partial
-from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.config import Config
-import time
+from kivy.core.window import Window
+from kivy.factory import Factory
+from kivy.uix.button import Button
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.image import Image
+from kivy.uix.label import Label
+from kivy.uix.popup import Popup
+from kivy.uix.togglebutton import ToggleButton, ToggleButtonBehavior
+from kivy.uix.widget import Widget
+
+import numpy as np
 import random
 import scipy
 import scipy.ndimage
-import numpy as np
 import sys
+import time
+
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 kivy.require('2.0.0')
 
@@ -74,20 +75,78 @@ def get_adjacent_tiles(g, i, j):
     return [matrix[tuple(ind)] for ind in nb_indices]
 
 
-class GameOverPopup(Popup):
+class WelcomeScreen(Label):
+    buttons = []
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.size = Window.size
+
+    def set_difficulty(self, diff, *args):
+        global DIFFICULTY
+        DIFFICULTY = diff
+
+    def set_gamemode(self, mode, *args):
+        global GAMEMODE
+        GAMEMODE = mode
+
+    def create_buttons(self):
+        easy = ToggleButton(text="Easy",
+                            size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
+                            pos=(0.1 * Window.size[0], 0.3 * Window.size[1]),
+                            group="difficulties",
+                            on_press=lambda *args: self.set_difficulty("easy", *args))
+        self.add_widget(easy)
+        self.buttons.append(easy)
+        medium = ToggleButton(text="Medium",
+                              size=(0.2 * Window.size[0],
+                                    0.1 * Window.size[1]),
+                              pos=(0.4 * Window.size[0], 0.3 * Window.size[1]),
+                              group="difficulties",
+                              on_press=lambda *args: self.set_difficulty("medium", *args))
+        self.add_widget(medium)
+        self.buttons.append(medium)
+        hard = ToggleButton(text="Hard",
+                            size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
+                            pos=(0.7 * Window.size[0], 0.3 * Window.size[1]),
+                            group="difficulties",
+                            on_press=lambda *args: self.set_difficulty("hard", *args))
+        self.add_widget(hard)
+        self.buttons.append(hard)
+
+        player = ToggleButton(text="Player",
+                              size=(0.2 * Window.size[0],
+                                    0.1 * Window.size[1]),
+                              pos=(0.25 * Window.size[0],
+                                   0.1 * Window.size[1]),
+                              group="modes",
+                              on_press=lambda *args: self.set_gamemode("player", *args))
+        self.add_widget(player)
+        self.buttons.append(player)
+        ai = ToggleButton(text="Computer",
+                          size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
+                          pos=(0.55 * Window.size[0], 0.1 * Window.size[1]),
+                          group="modes",
+                          on_press=lambda *args: self.set_gamemode("computer", *args))
+        self.add_widget(ai)
+        self.buttons.append(ai)
+
+        play = Button(text="PLAY",
+                      size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
+                      pos=(0.4 * Window.size[0], 0.6 * Window.size[1]))
+        self.add_widget(play)
+        self.buttons.append(play)
 
 
 class MSTile(Image, ToggleButtonBehavior):
-    row_number = 0  # x
-    col_number = 0  # y
-    running_adjacent_bombs = 0  # constant
-    adjacent_bombs = 0  # original constant
-    val = None  # val
-    is_uncovered = False  # uncovered
-    is_flagged = False  # flagged
-    constraints = []  # constraints
+    row_number = 0
+    col_number = 0
+    running_adjacent_bombs = 0
+    adjacent_bombs = 0
+    val = None
+    is_uncovered = False
+    is_flagged = False
+    constraints = []
     is_bomb = False
     adjacent_tiles = []
 
@@ -131,11 +190,11 @@ class MSTile(Image, ToggleButtonBehavior):
                         if seconds_elapsed < 60:
                             time_str = truncate_decimal(
                                 str(seconds_elapsed), 2) + "s"
-                        game_won_popup = GameOverPopup(title=f"You won!\nTime: {time_str}",
-                                                       content=exit_button,
-                                                       auto_dismiss=False,
-                                                       size=(500, 500),
-                                                       size_hint=(None, None))
+                        game_won_popup = Popup(title=f"You won!\nTime: {time_str}",
+                                               content=exit_button,
+                                               auto_dismiss=False,
+                                               size=(500, 500),
+                                               size_hint=(None, None))
                         exit_button.bind(
                             on_press=lambda *args: GAME.restart("computer",
                                                                 DIFFICULTY,
@@ -154,11 +213,11 @@ class MSTile(Image, ToggleButtonBehavior):
                     if seconds_elapsed < 60:
                         time_str = truncate_decimal(
                             str(seconds_elapsed), 2) + "s"
-                    game_over_popup = GameOverPopup(title=f"Game Over!\nTime: {time_str}",
-                                                    content=exit_button,
-                                                    auto_dismiss=False,
-                                                    size=(500, 500),
-                                                    size_hint=(None, None))
+                    game_over_popup = Popup(title=f"Game Over!\nTime: {time_str}",
+                                            content=exit_button,
+                                            auto_dismiss=False,
+                                            size=(500, 500),
+                                            size_hint=(None, None))
                     exit_button.bind(
                         on_press=lambda *args: GAME.restart("computer",
                                                             DIFFICULTY,
@@ -225,69 +284,6 @@ class MSGrid(GridLayout):
                 if (i, j) != self.starting_point:
                     coords.append((i, j))
         return coords
-
-
-class WelcomeScreen(Label):
-    buttons = []
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.size = Window.size
-
-    def set_difficulty(self, diff, *args):
-        global DIFFICULTY
-        DIFFICULTY = diff
-
-    def set_gamemode(self, mode, *args):
-        global GAMEMODE
-        GAMEMODE = mode
-
-    def create_buttons(self):
-        easy = ToggleButton(text="Easy",
-                            size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
-                            pos=(0.1 * Window.size[0], 0.3 * Window.size[1]),
-                            group="difficulties",
-                            on_press=lambda *args: self.set_difficulty("easy", *args))
-        self.add_widget(easy)
-        self.buttons.append(easy)
-        medium = ToggleButton(text="Medium",
-                              size=(0.2 * Window.size[0],
-                                    0.1 * Window.size[1]),
-                              pos=(0.4 * Window.size[0], 0.3 * Window.size[1]),
-                              group="difficulties",
-                              on_press=lambda *args: self.set_difficulty("medium", *args))
-        self.add_widget(medium)
-        self.buttons.append(medium)
-        hard = ToggleButton(text="Hard",
-                            size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
-                            pos=(0.7 * Window.size[0], 0.3 * Window.size[1]),
-                            group="difficulties",
-                            on_press=lambda *args: self.set_difficulty("hard", *args))
-        self.add_widget(hard)
-        self.buttons.append(hard)
-
-        player = ToggleButton(text="Player",
-                              size=(0.2 * Window.size[0],
-                                    0.1 * Window.size[1]),
-                              pos=(0.25 * Window.size[0],
-                                   0.1 * Window.size[1]),
-                              group="modes",
-                              on_press=lambda *args: self.set_gamemode("player", *args))
-        self.add_widget(player)
-        self.buttons.append(player)
-        ai = ToggleButton(text="Computer",
-                          size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
-                          pos=(0.55 * Window.size[0], 0.1 * Window.size[1]),
-                          group="modes",
-                          on_press=lambda *args: self.set_gamemode("computer", *args))
-        self.add_widget(ai)
-        self.buttons.append(ai)
-
-        play = Button(text="PLAY",
-                      size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
-                      pos=(0.4 * Window.size[0], 0.6 * Window.size[1]))
-        self.add_widget(play)
-        self.buttons.append(play)
 
 
 class MSGame(Widget):
@@ -421,11 +417,11 @@ class MSCSP():
             if seconds_elapsed < 60:
                 time_str = truncate_decimal(
                     str(seconds_elapsed), 2) + "s"
-            game_over_popup = GameOverPopup(title=f"Game Lost!\nTime: {time_str}",
-                                            content=exit_button,
-                                            auto_dismiss=False,
-                                            size=(350, 350),
-                                            size_hint=(None, None))
+            game_over_popup = Popup(title=f"Game Lost!\nTime: {time_str}",
+                                    content=exit_button,
+                                    auto_dismiss=False,
+                                    size=(350, 350),
+                                    size_hint=(None, None))
             exit_button.bind(on_press=App.get_running_app().stop)
             game_over_popup.open()
         else:
@@ -440,11 +436,11 @@ class MSCSP():
                 if seconds_elapsed < 60:
                     time_str = truncate_decimal(
                         str(seconds_elapsed), 2) + "s"
-                game_over_popup = GameOverPopup(title=f"Game Won!\nTime: {time_str}",
-                                                content=exit_button,
-                                                auto_dismiss=False,
-                                                size=(350, 350),
-                                                size_hint=(None, None))
+                game_over_popup = Popup(title=f"Game Won!\nTime: {time_str}",
+                                        content=exit_button,
+                                        auto_dismiss=False,
+                                        size=(350, 350),
+                                        size_hint=(None, None))
                 exit_button.bind(on_press=App.get_running_app().stop)
                 game_over_popup.open()
 
@@ -481,19 +477,15 @@ class MSCSP():
     def start_game(self):
         while self.squares_to_probe:
             square = self.squares_to_probe.pop()
-            # print(f"Square: {square}")
             uncovered = self.uncover_square(square)
             if uncovered == True:
-                # uncovered a mine
                 self.lost_game = True
                 return
             self.simplify_constraints()
         mines_left = self.grid.num_mines - self.num_mines_flagged
         if len(self.grid.moves) > 0 and mines_left > 0:
-            # time to do backtracking search to pick squares to uncover
             self.search()
         mines_left = self.grid.num_mines - self.num_mines_flagged
-        # corner edge case - check if last mine is surrounded by other mines
         if mines_left:
             squares_left = list(
                 set(self.grid.board_coordinates) - self.grid.marked_squares)
@@ -502,7 +494,6 @@ class MSCSP():
                     for sq in squares_left:
                         self.mark_square_as_mine(sq)
         else:
-            # if there are still uncovered squares
             if self.grid.moves:
                 for square in self.grid.moves:
                     for constraint in square.constraints:
@@ -510,10 +501,6 @@ class MSCSP():
         return
 
     def uncover_square(self, square):
-        """
-        Returns True if the uncovered square is a mine.
-        """
-        # print(square)
         if square in self.probed_squares:
             return
         x, y = square
@@ -522,12 +509,10 @@ class MSCSP():
         current = self.get_current_square(x, y)
         current.is_uncovered = True
         if current.original_constant == 9:
-            # uncovered a mine
             return True
         else:
             self.mark_square_as_safe(square)
             if current.original_constant == 0:
-                # keep uncovering adjacent squares until they have non-zero constants
                 neighbors = get_adjacent_tiles(self.grid.grid, x, y)
                 for neighbor in neighbors:
                     n = (neighbor.row_number, neighbor.col_number)
@@ -535,16 +520,13 @@ class MSCSP():
                         nx, ny = n
                         self.uncover_square((nx, ny))
             elif current.original_constant > 0 and current.original_constant < 9:
-                # numbered square, add to list of moves
                 if current not in self.grid.moves:
                     self.grid.moves.append(current)
                 return
         return
 
     def search(self):
-        # backtracking for all solutions with the remaining squares
         leftovers = {}
-        # make a list of unknown constraints
         for m in self.grid.moves:
             if m.constraints:
                 for constraint in m.constraints:
@@ -569,17 +551,14 @@ class MSCSP():
                     if sum(comb) == mines_left and len(comb) == squares_left:
                         valid = self.check_solution_validity(squares, comb)
                         if valid:
-                            # only keep valid solutions
                             c = comb.copy()
                             solutions.append(c)
                     backtrack(comb)
                     removed = comb.pop()
                 return solutions
-        # backtrack to find solutions if there are fewer mines than squares
         if mines_left < squares_left:
             backtrack([])
         if solutions:
-            # check if any squares are safe in all solutions
             square_solution_counts = {}
             for s in range(len(solutions)):
                 for sq in range(len(solutions[s])):
@@ -594,15 +573,12 @@ class MSCSP():
                     added_safe_squares = True
                     self.squares_to_probe.append(square)
             if not added_safe_squares:
-                # pick a random solution and probe safe squares
                 random_solution = random.randint(0, len(solutions)-1)
                 comb = solutions[random_solution]
                 for square, value in zip(squares, comb):
                     if value == 0:
-                        # currently just adding all squares marked as safe in the first solution in list
                         self.squares_to_probe.append(square)
         else:
-            # no solutions, so pick a random square
             squares_left = list(
                 set(self.grid.board_coordinates) - self.grid.marked_squares)
             random_square = random.randint(0, len(squares_left)-1)
@@ -612,10 +588,6 @@ class MSCSP():
         return
 
     def meets_constraints(self, variable, val):
-        """
-        Sets the variable to the value {0,1} and checks to see if it violates 
-        constraints.
-        """
         x, y = variable
         square = self.get_current_square(x, y)
         square.val = val
@@ -625,23 +597,16 @@ class MSCSP():
             ny = n.col_number
             neighbor_square = self.get_current_square(nx, ny)
             neighbor_constant = neighbor_square.original_constant
-            # only look at neighbors that are uncovered and aren't mines
             if neighbor_square.val is not None and neighbor_square.val != 1:
                 mines, safe, unknown = self.get_neighbor_count((nx, ny))
                 if mines > neighbor_constant:
-                    # violation: too many mines
                     return False
                 elif (neighbor_constant - mines) > unknown:
-                    # violation: not enough mines
                     return False
         return True
 
     def get_neighbor_count(self, variable):
-        """
-        Return count of mines, safe squares and unknown squares around variable
-        """
         nx, ny = variable
-        # get its neighbors
         nbors = get_adjacent_tiles(self.grid.grid, nx, ny)
         mine_count = 0
         unknown_count = 0
@@ -650,7 +615,6 @@ class MSCSP():
             nbx = nb.row_number
             nby = nb.col_number
             nbor_square = self.get_current_square(nbx, nby)
-            # TODO - need to take into account unknowns
             if nbor_square.val == 1:
                 mine_count += 1
             elif nbor_square.val == 0:
@@ -660,14 +624,9 @@ class MSCSP():
         return mine_count, safe_count, unknown_count
 
     def check_solution_validity(self, squares, comb):
-        """
-        Check each solution from backtracking to make sure they don't violate 
-        constraints.
-        """
         all_valid = False
         for square, value in zip(squares, comb):
             all_valid = self.meets_constraints(square, value)
-        # after checking validity, set the square's val back to None
         for square in squares:
             x, y = square
             sq = self.get_current_square(x, y)
@@ -685,7 +644,6 @@ class MSCSP():
                 c2.constraints = list(c2_constraints - c1_constraints)
                 c2.constant -= c1.constant
                 if c2.constant == 0 and len(c2.constraints) > 0:
-                    # constraints are safe/can be uncovered
                     while c2.constraints:
                         c = c2.constraints.pop()
                         if c not in self.squares_to_probe and c not in self.probed_squares:
@@ -768,7 +726,6 @@ class MSCSP():
         self.grid.marked_squares.add(square)
         current_square = self.get_current_square(x, y)
         if current_square.val is not None:
-            # square already marked
             return
         else:
             if is_mine:
@@ -777,7 +734,6 @@ class MSCSP():
             else:
                 current_square.val = 0
             neighbors = get_adjacent_tiles(self.grid.grid, x, y)
-            # remove known square from adjacent neighbor constraints
             for neighbor in neighbors:
                 nx = neighbor.row_number
                 ny = neighbor.col_number
@@ -785,14 +741,10 @@ class MSCSP():
                 if (x, y) in neighbor_square.constraints:
                     neighbor_square.constraints.remove(square)
                     if is_mine:
-                        # if square is a mine, decrement neighbors constants
                         neighbor_square.constant -= 1
         return
 
     def get_current_square(self, x, y):
-        """return Square object at (x,y) in board"""
-        # print(f"Rows: {self.grid.rows}, Cols: {self.grid.cols}")
-        # print(f"x: {x}, y: {y}")
         return self.grid.grid[x][y]
 
 
