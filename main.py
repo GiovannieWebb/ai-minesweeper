@@ -23,6 +23,8 @@ import sys
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 kivy.require('2.0.0')
 
+GAME = None
+
 NUM_BOMBS = {"easy": 10, "medium": 40, "hard": 99}
 NUM_ROWS = {"easy": 9, "medium": 16, "hard": 16}
 NUM_COLS = {"easy": 9, "medium": 16, "hard": 30}
@@ -100,6 +102,7 @@ class MSTile(Image, ToggleButtonBehavior):
         self.keep_ratio = False
 
     def on_touch_down(self, touch):
+        global GAME
         global GAMEMODE
         global SAFE_TILES_COVERED
         if GAMEMODE != "player":
@@ -120,7 +123,8 @@ class MSTile(Image, ToggleButtonBehavior):
                         SAFE_TILES_COVERED -= 1
                         self.is_uncovered = True
                     if SAFE_TILES_COVERED == 0:
-                        exit_button = Button(text="Quit", size=(50, 50))
+                        exit_button = Button(
+                            text="Replay with Computer", size=(200, 200))
                         seconds_elapsed = time.time() - START_TIME
                         time_str = truncate_decimal(
                             str(seconds_elapsed/60.0), 2) + "min"
@@ -130,15 +134,20 @@ class MSTile(Image, ToggleButtonBehavior):
                         game_won_popup = GameOverPopup(title=f"You won!\nTime: {time_str}",
                                                        content=exit_button,
                                                        auto_dismiss=False,
-                                                       size=(350, 350),
+                                                       size=(500, 500),
                                                        size_hint=(None, None))
-                        exit_button.bind(on_press=App.get_running_app().stop)
+                        exit_button.bind(
+                            on_press=lambda *args: GAME.restart("computer",
+                                                                DIFFICULTY,
+                                                                game_won_popup,
+                                                                *args))
                         game_won_popup.open()
                     self.source = f"images/number-{self.adjacent_bombs}.png"
 
                 else:
                     self.source = "images/bomb.png"
-                    exit_button = Button(text="Quit", size=(50, 50))
+                    exit_button = Button(
+                        text="Replay with Computer", size=(200, 200))
                     seconds_elapsed = time.time() - START_TIME
                     time_str = truncate_decimal(
                         str(seconds_elapsed/60.0), 2) + "min"
@@ -148,9 +157,13 @@ class MSTile(Image, ToggleButtonBehavior):
                     game_over_popup = GameOverPopup(title=f"Game Over!\nTime: {time_str}",
                                                     content=exit_button,
                                                     auto_dismiss=False,
-                                                    size=(350, 350),
+                                                    size=(500, 500),
                                                     size_hint=(None, None))
-                    exit_button.bind(on_press=App.get_running_app().stop)
+                    exit_button.bind(
+                        on_press=lambda *args: GAME.restart("computer",
+                                                            DIFFICULTY,
+                                                            game_over_popup,
+                                                            *args))
                     game_over_popup.open()
         return super(MSTile, self).on_touch_down(touch)
 
@@ -284,6 +297,8 @@ class MSGame(Widget):
         halign='center',
         valign='center')
 
+    bomb_positions = set()
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.bind(size=self.resize_grid)
@@ -311,14 +326,12 @@ class MSGame(Widget):
         self.grid.cols = NUM_COLS[DIFFICULTY]
         self.grid.num_mines = NUM_BOMBS[DIFFICULTY]
 
-    def bomb_positions(self):
-        bomb_tiles = set()
+    def set_bomb_positions(self):
         num_bombs = NUM_BOMBS[DIFFICULTY]
-        while len(bomb_tiles) < num_bombs:
+        while len(self.bomb_positions) < num_bombs:
             rand_row = random.randint(0, NUM_ROWS[DIFFICULTY]-1)
             rand_col = random.randint(0, NUM_COLS[DIFFICULTY]-1)
-            bomb_tiles.add((rand_row, rand_col))
-        return bomb_tiles
+            self.bomb_positions.add((rand_row, rand_col))
 
     def min_adj_bombs(self):
         min_adj_bombs = 8
@@ -350,19 +363,35 @@ class MSGame(Widget):
         self.add_widget(self.welcome_screen)
 
     def begin_game(self, *args):
+        global GAME
         if DIFFICULTY is not None and GAMEMODE is not None:
             self.set_variables()
             for button in self.welcome_screen.buttons:
                 self.welcome_screen.remove_widget(button)
                 self.remove_widget(button)
             self.remove_widget(self.welcome_screen)
-            self.grid.create_layout(bomb_positions=self.bomb_positions())
+            self.set_bomb_positions()
+            self.grid.create_layout(bomb_positions=self.bomb_positions)
             self.add_widget(self.grid)
             self.uncover_first_non_bomb_tile()
+            GAME = self
             if GAMEMODE == "computer":
                 csp = MSCSP(game=self, grid=self.grid)
                 csp.start_game()
                 csp.perform_actions()
+
+    def restart(self, gamemode, difficulty, popup, *largs):
+        global GAMEMODE
+        global DIFFICULTY
+        GAMEMODE = gamemode
+        DIFFICULTY = difficulty
+        if popup is not None:
+            popup.dismiss()
+        self.welcome_screen.clear_widgets()
+        self.grid.clear_widgets()
+        self.clear_widgets()
+
+        self.begin_game()
 
 
 class MSCSP():
