@@ -7,6 +7,7 @@ from kivy.config import Config
 from kivy.core.window import Window
 from kivy.factory import Factory
 from kivy.uix.button import Button
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.image import Image
 from kivy.uix.label import Label
@@ -79,6 +80,48 @@ def get_adjacent_tiles(g, i, j):
         x, y = neighbor
         ms_tiles.append(g.grid[x][y])
     return ms_tiles
+
+
+class AdjacentButtons(BoxLayout):
+    buttons = []
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def add_popup_buttons(self, is_player, popup):
+        if is_player:
+            replay_button = Button(text="Replay as\nComputer",
+                                   size=(200, 200),
+                                   halign='center',
+                                   valign='center')
+            replay_button.bind(on_release=lambda *args: GAME.restart("computer",
+                                                                     DIFFICULTY,
+                                                                     popup,
+                                                                     *args))
+            self.buttons.append(replay_button)
+            self.add_widget(replay_button)
+        else:
+            replay_button = Button(text="Replay as\nPlayer",
+                                   size=(200, 200),
+                                   halign='center',
+                                   valign='center')
+            replay_button.bind(on_release=lambda *args: GAME.restart("player",
+                                                                     DIFFICULTY,
+                                                                     popup,
+                                                                     *args))
+            self.buttons.append(replay_button)
+            self.add_widget(replay_button)
+
+        main_menu_button = Button(text="Main Menu", size=(200, 200))
+        main_menu_button.bind(
+            on_release=lambda *args: GAME.reset(popup, *args))
+        self.buttons.append(main_menu_button)
+        self.add_widget(main_menu_button)
+
+        quit_button = Button(text="Quit", size=(200, 200))
+        quit_button.bind(on_release=App.get_running_app().stop)
+        self.buttons.append(quit_button)
+        self.add_widget(quit_button)
 
 
 class WelcomeScreen(Label):
@@ -188,47 +231,40 @@ class MSTile(Image, ToggleButtonBehavior):
                         SAFE_TILES_COVERED -= 1
                         self.is_uncovered = True
                     if SAFE_TILES_COVERED == 0:
-                        exit_button = Button(
-                            text="Replay with Computer", size=(200, 200))
                         seconds_elapsed = time.time() - START_TIME
                         time_str = truncate_decimal(
                             str(seconds_elapsed/60.0), 2) + "min"
                         if seconds_elapsed < 60:
                             time_str = truncate_decimal(
                                 str(seconds_elapsed), 2) + "s"
+                        popup_buttons = AdjacentButtons(
+                            orientation='horizontal')
                         game_won_popup = Popup(title=f"You won!\nTime: {time_str}",
-                                               content=exit_button,
+                                               content=popup_buttons,
                                                auto_dismiss=False,
-                                               size=(500, 500),
+                                               size=(900, 900),
                                                size_hint=(None, None))
-                        exit_button.bind(
-                            on_press=lambda *args: GAME.restart("computer",
-                                                                DIFFICULTY,
-                                                                game_won_popup,
-                                                                *args))
+                        popup_buttons.add_popup_buttons(
+                            is_player=True, popup=game_won_popup)
                         game_won_popup.open()
                     self.source = f"images/number-{self.adjacent_bombs}.png"
 
                 else:
                     self.source = "images/bomb.png"
-                    exit_button = Button(
-                        text="Replay with Computer", size=(200, 200))
                     seconds_elapsed = time.time() - START_TIME
                     time_str = truncate_decimal(
                         str(seconds_elapsed/60.0), 2) + "min"
                     if seconds_elapsed < 60:
                         time_str = truncate_decimal(
                             str(seconds_elapsed), 2) + "s"
+                    popup_buttons = AdjacentButtons(orientation='horizontal')
                     game_over_popup = Popup(title=f"Game Over!\nTime: {time_str}",
-                                            content=exit_button,
+                                            content=popup_buttons,
                                             auto_dismiss=False,
-                                            size=(500, 500),
+                                            size=(900, 900),
                                             size_hint=(None, None))
-                    exit_button.bind(
-                        on_press=lambda *args: GAME.restart("computer",
-                                                            DIFFICULTY,
-                                                            game_over_popup,
-                                                            *args))
+                    popup_buttons.add_popup_buttons(
+                        is_player=True, popup=game_over_popup)
                     game_over_popup.open()
         return super(MSTile, self).on_touch_down(touch)
 
@@ -391,11 +427,39 @@ class MSGame(Widget):
         START_TIME = time.time()
         if popup is not None:
             popup.dismiss()
+        # clear welcome screen
         self.welcome_screen.clear_widgets()
+        # clear grid
+        self.grid.marked_squares.clear()
+        self.grid.moves.clear()
+        self.grid.mines_flagged.clear()
         self.grid.clear_widgets()
+        self.grid.clear_widgets()
+        # clear game widgets
         self.clear_widgets()
 
         self.begin_game()
+
+    def reset(self, popup, *largs):
+        global START_TIME
+        START_TIME = time.time()
+        if popup is not None:
+            popup.dismiss()
+        # clear welcome screen
+        self.welcome_screen.clear_widgets()
+        # clear grid
+        self.grid.marked_squares.clear()
+        self.grid.num_mines = 0
+        self.grid.moves.clear()
+        self.grid.starting_point = None
+        self.grid.board_coordinates.clear()
+        self.grid.mines_flagged.clear()
+        self.grid.clear_widgets()
+        # clea game widgets
+        self.bomb_positions.clear()
+        self.clear_widgets()
+
+        self.initialize_game()
 
 
 class MSCSP():
@@ -418,46 +482,42 @@ class MSCSP():
         global SAFE_TILES_COVERED
         if t.is_bomb:
             t.source = "images/bomb.png"
-            exit_button = Button(text="Replay as Player", size=(200, 200))
             seconds_elapsed = time.time() - START_TIME
             time_str = truncate_decimal(
                 str(seconds_elapsed/60.0), 2) + "min"
             if seconds_elapsed < 60:
                 time_str = truncate_decimal(
                     str(seconds_elapsed), 2) + "s"
+            popup_buttons = AdjacentButtons(
+                orientation='horizontal')
             game_over_popup = Popup(title=f"Game Lost!\nTime: {time_str}",
-                                    content=exit_button,
+                                    content=popup_buttons,
                                     auto_dismiss=False,
-                                    size=(500, 500),
+                                    size=(900, 900),
                                     size_hint=(None, None))
-            exit_button.bind(
-                on_press=lambda *args: GAME.restart("player",
-                                                    DIFFICULTY,
-                                                    game_over_popup,
-                                                    *args))
+            popup_buttons.add_popup_buttons(
+                is_player=False, popup=game_over_popup)
             game_over_popup.open()
         else:
             t.source = f"images/number-{t.adjacent_bombs}.png"
             SAFE_TILES_COVERED -= 1
             if SAFE_TILES_COVERED == 0:
                 t.source = f"images/number-{t.adjacent_bombs}.png"
-                exit_button = Button(text="Replay as Player", size=(200, 200))
                 seconds_elapsed = time.time() - START_TIME
                 time_str = truncate_decimal(
                     str(seconds_elapsed/60.0), 2) + "min"
                 if seconds_elapsed < 60:
                     time_str = truncate_decimal(
                         str(seconds_elapsed), 2) + "s"
+                popup_buttons = AdjacentButtons(
+                    orientation='horizontal')
                 game_won_popup = Popup(title=f"Game Won!\nTime: {time_str}",
-                                       content=exit_button,
+                                       content=popup_buttons,
                                        auto_dismiss=False,
-                                       size=(500, 500),
+                                       size=(900, 900),
                                        size_hint=(None, None))
-                exit_button.bind(
-                    on_press=lambda *args: GAME.restart("player",
-                                                        DIFFICULTY,
-                                                        game_won_popup,
-                                                        *args))
+                popup_buttons.add_popup_buttons(
+                    is_player=False, popup=game_won_popup)
                 game_won_popup.open()
 
     def flag_tile(self, t, *largs):
