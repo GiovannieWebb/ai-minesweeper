@@ -89,17 +89,25 @@ class AdjacentButtons(BoxLayout):
         super().__init__(**kwargs)
 
     def add_popup_buttons(self, is_player, popup):
+        replay_button = Button(text="Replay",
+                               size=(200, 200))
+        replay_button.bind(on_release=lambda *args: GAME.restart(GAMEMODE,
+                                                                 DIFFICULTY,
+                                                                 popup,
+                                                                 *args))
+        self.buttons.append(replay_button)
+        self.add_widget(replay_button)
         if is_player:
-            replay_button = Button(text="Replay as\nComputer",
-                                   size=(200, 200),
-                                   halign='center',
-                                   valign='center')
-            replay_button.bind(on_release=lambda *args: GAME.restart("computer",
-                                                                     DIFFICULTY,
-                                                                     popup,
-                                                                     *args))
-            self.buttons.append(replay_button)
-            self.add_widget(replay_button)
+            replay_as_button = Button(text="Replay as\nComputer",
+                                      size=(200, 200),
+                                      halign='center',
+                                      valign='center')
+            replay_as_button.bind(on_release=lambda *args: GAME.restart("computer",
+                                                                        DIFFICULTY,
+                                                                        popup,
+                                                                        *args))
+            self.buttons.append(replay_as_button)
+            self.add_widget(replay_as_button)
         else:
             replay_button = Button(text="Replay as\nPlayer",
                                    size=(200, 200),
@@ -401,12 +409,14 @@ class MSGame(Widget):
 
     def begin_game(self, *args):
         global GAME
+        global START_TIME
         if DIFFICULTY is not None and GAMEMODE is not None:
             self.set_variables()
             for button in self.welcome_screen.buttons:
                 self.welcome_screen.remove_widget(button)
                 self.remove_widget(button)
             self.remove_widget(self.welcome_screen)
+            START_TIME = time.time()
             if len(self.bomb_positions) == 0:
                 self.set_bomb_positions()
             self.grid.create_layout(bomb_positions=self.bomb_positions)
@@ -441,8 +451,10 @@ class MSGame(Widget):
         self.begin_game()
 
     def reset(self, popup, *largs):
-        global START_TIME
-        START_TIME = time.time()
+        global GAMEMODE
+        global DIFFICULTY
+        GAMEMODE = None
+        DIFFICULTY = None
         if popup is not None:
             popup.dismiss()
         # clear welcome screen
