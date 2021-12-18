@@ -26,7 +26,6 @@ From the main menu, select the difficulty level (Easy, Medium or Hard), select t
 - Medium: 16 by 16 board, 40 bombs.
 - Hard: 16 by 30 board, 99 bombs.
 
-
 "Player" mode is manual play. "Computer" mode attempts to solve a grid using the Constraint Satisfaction Problem as an artificial intelligence technique. After a manual-play game has ended, you are given the option to re-run the game using the AI, and vice versa after computer-play has ended.
 
 Try your best to beat the computer, or use the computer's solutions to help improve your own style of play!
