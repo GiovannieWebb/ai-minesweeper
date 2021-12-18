@@ -70,7 +70,7 @@ def create_num_wins_bar_charts():
     plt.show()
 
 
-def calculate_success_rate():
+def calculate_average_times():
     """
     Returns a dictionary with keys "easy", "medium", and "hard" where key values 
     are the average time spent out of the number of corresponding games won.
@@ -111,5 +111,35 @@ def calculate_success_rate():
     }
 
 
+def calculate_success_rates():
+    """
+    Returns a dictionary with keys "easy", "medium", and "hard" where key values 
+    are the win success rate ((# wins / total iterations) * 100).
+    """
+    num_wins = calculate_num_wins()
+    easy_wins = num_wins["easy"]
+    medium_wins = num_wins["medium"]
+    hard_wins = num_wins["hard"]
+
+    easy_stats = get_stats_from_csv("data/easy-stats.csv")
+    num_easy_iterations = len(easy_stats["results"])
+
+    medium_stats = get_stats_from_csv("data/medium-stats.csv")
+    num_medium_iterations = len(medium_stats["results"])
+
+    hard_stats = get_stats_from_csv("data/hard-stats.csv")
+    num_hard_iterations = len(hard_stats["results"])
+
+    return {
+        "easy": (easy_wins / num_easy_iterations) * 100,
+        "medium": (medium_wins / num_medium_iterations) * 100,
+        "hard": (hard_wins / num_hard_iterations) * 100
+    }
+
+
 if __name__ == '__main__':
     create_num_wins_bar_charts()
+    # average_times = calculate_average_times()
+    # print(average_times)
+    # succes_rates = calculate_success_rates()
+    # print(succes_rates)
