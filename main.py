@@ -180,19 +180,28 @@ class WelcomeScreen(Label):
                               on_press=lambda *args: self.set_gamemode("player", *args))
         self.add_widget(player)
         self.buttons.append(player)
-        ai = ToggleButton(text="Computer",
-                          size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
-                          pos=(0.55 * Window.size[0], 0.1 * Window.size[1]),
-                          group="modes",
-                          on_press=lambda *args: self.set_gamemode("computer", *args))
-        self.add_widget(ai)
-        self.buttons.append(ai)
+        computer = ToggleButton(text="Computer",
+                                size=(0.2 * Window.size[0],
+                                      0.1 * Window.size[1]),
+                                pos=(0.55 * Window.size[0],
+                                     0.1 * Window.size[1]),
+                                group="modes",
+                                on_press=lambda *args: self.set_gamemode("computer", *args))
+        self.add_widget(computer)
+        self.buttons.append(computer)
 
         play = Button(text="PLAY",
                       size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
-                      pos=(0.4 * Window.size[0], 0.6 * Window.size[1]))
+                      pos=(0.25 * Window.size[0], 0.6 * Window.size[1]))
         self.add_widget(play)
         self.buttons.append(play)
+
+        quit = Button(text="Quit",
+                      size=(0.2 * Window.size[0], 0.1 * Window.size[1]),
+                      pos=(0.55 * Window.size[0], 0.6 * Window.size[1]))
+        quit.bind(on_release=App.get_running_app().stop)
+        self.add_widget(quit)
+        self.buttons.append(quit)
 
 
 class MSTile(Image, ToggleButtonBehavior):
@@ -364,7 +373,9 @@ class MSGame(Widget):
             if button.text == "Computer":
                 button.pos = (0.55 * Window.size[0], 0.1 * Window.size[1])
             if button.text == "PLAY":
-                button.pos = (0.4 * Window.size[0], 0.6 * Window.size[1])
+                button.pos = (0.25 * Window.size[0], 0.6 * Window.size[1])
+            if button.text == "Quit":
+                button.pos = (0.55 * Window.size[0], 0.6 * Window.size[1])
 
     def set_variables(self):
         self.grid.rows = NUM_ROWS[DIFFICULTY]
@@ -756,22 +767,18 @@ class MSCSP():
         constraints_to_remove = set()
         for move in self.grid.moves:
             if len(move.constraints) == move.constant:
-                # leftover constraints are mines
                 while move.constraints:
                     square = move.constraints.pop()
                     self.mark_square_as_mine(square)
                 constraints_to_remove.add(move)
             elif move.constant == 0:
-                # if there are constraints left, they are safe squares
                 while move.constraints:
                     square = move.constraints.pop()
                     self.squares_to_probe.append(square)
                 constraints_to_remove.add(move)
-        # remove any Squares that constraints have been satisfied
         for m in constraints_to_remove:
             self.grid.moves.remove(m)
 
-        # now look at pairs of constraints to reduce subsets
         constraints_to_remove = set()
         if len(self.grid.moves) > 1:
             i = 0
