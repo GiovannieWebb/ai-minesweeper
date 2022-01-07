@@ -486,6 +486,16 @@ class MSGame(Widget):
 
 
 class MSCSP():
+    """
+    Minesweeper Constraint Satisfaction Problem.
+
+    Source code adapted from Christina Levengood's Minesweeper Solver:
+    https://github.com/lvngd/minesweeper/blob/master/minesweeper_ai.py
+
+    Explanation: 
+    https://lvngd.com/blog/solving-minesweeper-python-constraint-satisfaction-problem/
+    """
+
     def __init__(self, **kwargs):
         self.game = kwargs.get("game")
         self.grid = kwargs.get("grid")
